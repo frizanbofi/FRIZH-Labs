@@ -6,49 +6,77 @@
   <style>
     body { background: #121212; color: #ddd; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 10px; }
     h2 { color: #00ffcc; text-align: center; letter-spacing: 2px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-    .tabs { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; }
-    .tab { flex: 1; padding: 10px; background: #222; text-align: center; cursor: pointer; border-radius: 5px; font-weight: bold; min-width: 60px; }
-    .tab.active { background: #00ffcc; color: #000; }
+    
+    .tabs { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { flex: 1; padding: 10px; background: #222; text-align: center; cursor: pointer; border-radius: 5px; font-weight: bold; min-width: 60px; transition: 0.2s; border: 1px solid transparent; }
+    .tab.active { background: #00ffcc; color: #000; box-shadow: 0 0 10px rgba(0,255,204,0.3); }
+    
     .panel { display: none; background: #1a1a1a; padding: 15px; border-radius: 5px; border: 1px solid #333; }
-    .panel.active { display: block; }
+    .panel.active { display: block; animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; }
-    .control-group { background: #222; padding: 10px; border-radius: 5px; }
-    label { font-size: 11px; color: #888; display: block; margin-bottom: 5px; text-transform: uppercase; }
-    input[type=range] { width: 100%; margin: 5px 0; cursor: pointer; }
-    select { width: 100%; padding: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 3px; }
-    .val-display { float: right; color: #00ffcc; font-weight: bold; font-family: monospace; }
-    .meter-container { height: 10px; background: #000; border-radius: 2px; margin-top: 5px; overflow: hidden;}
-    .fill { background: linear-gradient(to right, #0f0, #ff0, #f00); height: 100%; width: 0%; transition: width 0.1s; }
-    canvas { background: #000; width: 100%; height: 140px; border-radius: 5px; border: 1px solid #444; margin: 15px 0; display: block; }
-    .btn-revert { background: #444; color: #fff; border: 1px solid #666; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 10px; float: right; }
-    .btn-mute { background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 10px; font-weight: bold; width: 100%; transition: 0.2s; }
-    .btn-mute.active { background: #f55; color: #fff; border-color: #f00; box-shadow: 0 0 8px #f00; }
+    .control-group { background: #222; padding: 10px; border-radius: 5px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
+    label { font-size: 11px; color: #888; display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type=range] { width: 100%; margin: 5px 0; cursor: pointer; accent-color: #00ffcc; }
+    select { width: 100%; padding: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 3px; cursor: pointer; outline: none; }
+    select:focus { border-color: #00ffcc; }
+    .val-display { float: right; color: #00ffcc; font-weight: bold; font-family: monospace; font-size: 12px; }
+    
+    /* Pro VU Meter Styles */
+    .pro-meters-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+    @media (min-width: 600px) { .pro-meters-grid { grid-template-columns: 1fr 1fr; } }
+    .meter-wrapper { background: #181818; padding: 12px; border-radius: 6px; border: 1px solid #333; box-shadow: inset 0 2px 8px rgba(0,0,0,0.6); }
+    .meter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .meter-title { font-weight: 800; color: #00ffcc; font-size: 13px; letter-spacing: 1px; text-shadow: 0 0 5px rgba(0,255,204,0.3); }
+    .meter-indicators { display: flex; gap: 6px; }
+    
+    .led { padding: 3px 6px; border-radius: 3px; font-size: 9px; font-weight: 900; letter-spacing: 0.5px; color: #444; background: #222; border: 1px solid #111; opacity: 0.6; transition: all 0.1s; }
+    .led.active { opacity: 1; color: #fff; }
+    .led-mute.active { background: #e60000; border-color: #ff3333; box-shadow: 0 0 8px #e60000; }
+    .led-clip.active { background: #ff0000; border-color: #ff6666; box-shadow: 0 0 10px #ff0000; color: #fff; }
+    .led-comp.active { background: #ffaa00; border-color: #ffcc00; box-shadow: 0 0 8px #ffaa00; color: #000; }
+
+    .pro-meter-container { height: 16px; background: #0a0a0a; border-radius: 3px; position: relative; overflow: hidden; border: 1px solid #000; box-shadow: inset 0 1px 3px rgba(0,0,0,0.8); }
+    .pro-meter-fill { height: 100%; width: 0%; background: linear-gradient(to right, #00cc00 55%, #e6e600 80%, #ff0000 95%); transition: width 0.08s ease-out; }
+    .pro-meter-marks { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(to right, transparent, transparent 3px, #0a0a0a 3px, #0a0a0a 4px); pointer-events: none; }
+    .pro-meter-scale { display: flex; justify-content: space-between; margin-top: 4px; color: #777; font-size: 10px; font-family: monospace; padding: 0 2px; }
+
+    canvas { background: #000; width: 100%; height: 140px; border-radius: 5px; border: 1px solid #444; margin: 15px 0; display: block; box-shadow: inset 0 0 10px rgba(0,255,204,0.1); }
+    
+    .btn-revert { background: #444; color: #fff; border: 1px solid #666; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 10px; float: right; transition: 0.2s; }
+    .btn-revert:hover { background: #555; }
+    .btn-mute { background: #333; color: #fff; border: 1px solid #555; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; transition: 0.2s; }
+    .btn-mute:hover { background: #444; }
+    .btn-mute.active { background: #f55; color: #fff; border-color: #f00; box-shadow: 0 0 8px rgba(255,0,0,0.6); }
     .btn-row { display: flex; gap: 10px; margin-bottom: 10px; width: 100%; }
     
-    .section-header { background: #333; padding: 8px 12px; margin-top: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px 4px 0 0; color: #00ffcc; font-size: 0.85em; }
-    .edit-toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 0.8em; }
-    .edit-toggle-wrap input { width: 16px; height: 16px; cursor: pointer; }
-    .dsp-section { background: #1a1a1a; padding: 10px; border: 1px solid #333; border-top: none; border-radius: 0 0 4px 4px; transition: opacity 0.2s; }
-    .dsp-section.locked { opacity: 0.4; pointer-events: none; }
+    .section-header { background: #2a2a2a; padding: 10px 12px; margin-top: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px 4px 0 0; color: #00ffcc; font-size: 0.85em; font-weight: bold; border: 1px solid #333; border-bottom: none; }
+    .edit-toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 0.8em; color: #aaa; }
+    .edit-toggle-wrap input { width: 14px; height: 14px; cursor: pointer; accent-color: #00ffcc; }
+    .dsp-section { background: #1a1a1a; padding: 12px; border: 1px solid #333; border-top: 1px solid #222; border-radius: 0 0 4px 4px; transition: opacity 0.2s; }
+    .dsp-section.locked { opacity: 0.4; pointer-events: none; filter: grayscale(50%); }
     
     /* BLE Overlay */
-    #connect-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; }
-    .btn-connect { padding:15px 30px; font-size:18px; background:#00ffcc; color:#000; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow: 0 4px 15px rgba(0, 255, 204, 0.4); transition: 0.2s;}
-    .btn-connect:hover { transform: scale(1.05); }
+    #connect-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(18,18,18,0.95); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; backdrop-filter: blur(5px); }
+    .btn-connect { padding:15px 30px; font-size:16px; background:#00ffcc; color:#000; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow: 0 4px 15px rgba(0, 255, 204, 0.4); transition: 0.2s; letter-spacing: 1px; }
+    .btn-connect:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 255, 204, 0.6); }
+    .btn-connect:active { transform: translateY(1px); }
   </style>
 </head>
 <body>
 
   <div id="connect-overlay">
-    <h2 style="border:none;">FRIZH DLMS 24 (BLE)</h2>
-    <button class="btn-connect" onclick="connectBLE()">CONNECT VIA BLUETOOTH</button>
-    <p style="color:#888; margin-top:15px; text-align:center;">Note: Ensure Bluetooth is enabled.<br>Requires Google Chrome / Chromium based browser.</p>
+    <h2 style="border:none; margin-bottom: 30px; font-size: 28px;">FRIZH DLMS 24</h2>
+    <button class="btn-connect" onclick="connectBLE()">CONNECT BLUETOOTH</button>
+    <p style="color:#888; margin-top:20px; text-align:center; font-size: 13px; line-height: 1.6;">Ensure Bluetooth is enabled on your device.<br>Requires Google Chrome, Edge, or a WebBLE supported browser.</p>
   </div>
 
   <h2>FRIZH DLMS 24</h2>
   
   <div class="tabs" id="tabs">
-    <div class="tab active" onclick="switchTab('t-meters')">VU BAR</div>
+    <div class="tab active" onclick="switchTab('t-meters')">VU METERS</div>
     <div class="tab" onclick="switchTab('t-inA')">IN A</div>
     <div class="tab" onclick="switchTab('t-inB')">IN B</div>
     <div class="tab" onclick="switchTab('t-out1')">OUT 1</div>
@@ -57,7 +85,7 @@
     <div class="tab" onclick="switchTab('t-out4')">OUT 4</div>
   </div>
 
-  <div id="t-meters" class="panel active"><div class="grid" id="meter-grid"></div></div>
+  <div id="t-meters" class="panel active"><div id="meter-grid"></div></div>
   <div id="t-inA" class="panel"><button class="btn-revert" onclick="revertTab('in', 0)">Reset A</button><div class="grid" id="ui-inA"></div></div>
   <div id="t-inB" class="panel"><button class="btn-revert" onclick="revertTab('in', 1)">Reset B</button><div class="grid" id="ui-inB"></div></div>
   <div id="t-out1" class="panel"></div>
@@ -92,10 +120,12 @@
         txChar.addEventListener('characteristicvaluechanged', handleNotifications);
         
         document.getElementById('connect-overlay').style.display = 'none';
-        
         // Request Initial State Dump
         sendBLE('/api/dump');
-      } catch(e) { console.error("BLE Error:", e); alert("Bluetooth Connection Failed."); }
+      } catch(e) { 
+        console.error("BLE Error:", e);
+        alert("Bluetooth Connection Failed. Please ensure your device supports Web Bluetooth."); 
+      }
     }
 
     async function processBleQueue() {
@@ -117,26 +147,53 @@
 
     function handleNotifications(event) {
       let val = new TextDecoder().decode(event.target.value);
+      
       if(val.startsWith("S:")) {
-        // Status Update
+        // Status Update Data: 
+        // [0-5]: Meter peaks | [6-7]: In Mutes | [8-11]: Out Mutes | [12-15]: Comp Actives
         let p = val.substring(2).split(',');
+        
         if(document.getElementById('t-meters').classList.contains('active')) {
           for(let i=0; i<6; i++) {
-            let db = 20 * Math.log10(parseFloat(p[i]) || 1e-9);
+            let floatPeak = parseFloat(p[i]) || 1e-9;
+            let db = 20 * Math.log10(floatPeak);
+            
+            // Update VU Bar width
             let mtr = document.getElementById(`mtr-${i}`);
             if(mtr) mtr.style.width = Math.max(0, Math.min(100, (db + 60) * (100 / 60))) + '%';
+            
+            // Clip Indicator (Triggers if peak is very close to 0dBFS)
+            let clipLed = document.getElementById(`ind-clip-${i}`);
+            if(clipLed) clipLed.classList.toggle('active', floatPeak >= 0.99);
           }
         }
+        
+        // Update Mutes and Comps states across UI
         if (dspState.in_mute !== undefined) {
           for(let i=0; i<2; i++) {
             dspState.in_mute[i] = (p[6+i] === '1');
+            
+            // Update Mute button inside specific IN tab
             let btn = document.getElementById(`btn-mute-in-${i}`);
             if(btn) btn.classList.toggle('active', dspState.in_mute[i]);
+            
+            // Update LED in VU Tab
+            let muteLed = document.getElementById(`ind-mute-${i}`);
+            if(muteLed) muteLed.classList.toggle('active', dspState.in_mute[i]);
           }
           for(let i=0; i<4; i++) {
             dspState.out_mute[i] = (p[8+i] === '1');
+            
+            // Update Mute button inside specific OUT tab
             let btn = document.getElementById(`btn-mute-out-${i}`);
             if(btn) btn.classList.toggle('active', dspState.out_mute[i]);
+            
+            // Update LEDs in VU Tab
+            let muteLed = document.getElementById(`ind-mute-${i+2}`);
+            if(muteLed) muteLed.classList.toggle('active', dspState.out_mute[i]);
+            
+            let compLed = document.getElementById(`ind-comp-${i+2}`);
+            if(compLed) compLed.classList.toggle('active', p[12+i] === '1');
           }
         }
       } else if (val.startsWith("J:")) {
@@ -179,7 +236,7 @@
       timers[type+ch+param+band] = setTimeout(() => {
         let url = `/api/set?type=${type}&ch=${ch}&p=${param}&v=${val}${band !== '' ? '&b='+band : ''}`;
         sendBLE(url);
-      }, 50); // Fast 50ms throttle for BLE
+      }, 50);
     }
 
     function handleSliderInput(el) {
@@ -221,6 +278,7 @@
       let id = `${type}_${param}_${ch}${band !== '' ? '_' + band : ''}`;
       let isFreq = (param === 'f' || param === 'fl' || param === 'fh');
       let displayVal = parseFloat(val).toFixed((unit === '' || step === '0.1') ? 1 : 0) + unit;
+      
       if(type === 'dl' || type === 'idl') {
           let dist = (parseFloat(val) * 34.3).toFixed(1);
           displayVal = parseFloat(val).toFixed(1) + 'ms / ' + dist + 'cm';
@@ -228,7 +286,9 @@
       
       if (type === 'comp' && param === 'thr' && parseInt(val) === 7) displayVal = "OFF";
       if (type === 'comp' && param === 'rat' && parseInt(val) === 21) displayVal = "LIM";
+      
       let htmlVal = val, htmlMin = min, htmlMax = max, htmlStep = step;
+      
       if (isFreq) {
          htmlMin = 0;
          htmlMax = 1000; htmlStep = 1;
@@ -268,11 +328,14 @@
       if(!cvs || cvs.offsetParent === null) return;
       let ctx = cvs.getContext('2d', { alpha: false });
       let w = cvs.width, h = cvs.height;
+      
       ctx.fillStyle = "#000"; ctx.fillRect(0,0,w,h);
       ctx.strokeStyle = '#222'; ctx.lineWidth = 1;
       for(let i=1; i<4; i++) { ctx.beginPath(); ctx.moveTo(0, h*i/4); ctx.lineTo(w, h*i/4); ctx.stroke(); }
 
-      ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.strokeStyle = '#00ffcc';
+      ctx.lineWidth = 2; ctx.beginPath();
+      
       let logMin = Math.log10(20), logMax = Math.log10(20000);
       
       let xo_t = parseInt(document.getElementById(`xo_t_${ch}`).value);
@@ -280,8 +343,10 @@
       let f_low = getRealFreq(document.getElementById(`xo_fl_${ch}`));
       let f_high = getRealFreq(document.getElementById(`xo_fh_${ch}`));
       let g_off = parseFloat(document.getElementById(`xo_g_${ch}`).value);
+      
       let orderL = [2.0, 2.0, 4.0, 8.0, 2.0, 4.0, 8.0][xo_t] || 2.0;
       let orderH = [2.0, 2.0, 4.0, 8.0, 2.0, 4.0, 8.0][xo_th] || 2.0;
+      
       for(let x=0; x<w; x+=2) {
         let f = Math.pow(10, logMin + (x/w)*(logMax-logMin));
         let total_db = g_off;
@@ -310,14 +375,43 @@
       <div class="section-header">
         <span>${title}</span>
         <div class="edit-toggle-wrap">
-          ${rstAction !== '' ? `<button style="background:#522; color:#fff; border:1px solid #f55; border-radius:3px; padding:2px 6px; font-size:9px; cursor:pointer;" onclick="${rstAction}">RST</button>` : ''}
-          <label>EDIT</label>
+          ${rstAction !== '' ? `<button style="background:#522; color:#fff; border:1px solid #f55; border-radius:3px; padding:2px 8px; font-weight:bold; font-size:9px; cursor:pointer;" onclick="${rstAction}">RST</button>` : ''}
+          <label style="margin:0; font-size:10px;">EDIT</label>
           <input type="checkbox" onchange="document.getElementById('${id}').classList.toggle('locked', !this.checked)">
         </div>
       </div>
       <div id="${id}" class="dsp-section locked">${content}</div>`;
 
     function buildUI() {
+      // Build VU Meters grid
+      let mHtml = '<div class="pro-meters-grid">';
+      ['IN A', 'IN B', 'OUT 1', 'OUT 2', 'OUT 3', 'OUT 4'].forEach((lbl, i) => {
+        let isOut = i >= 2;
+        let muteCls = (isOut ? dspState.out_mute[i-2] : dspState.in_mute[i]) ? 'led-mute active' : 'led-mute';
+        
+        mHtml += `
+        <div class="meter-wrapper">
+            <div class="meter-header">
+                <span class="meter-title">${lbl}</span>
+                <div class="meter-indicators">
+                    ${isOut ? `<span id="ind-comp-${i}" class="led led-comp">COMP</span>` : ''}
+                    <span id="ind-mute-${i}" class="led ${muteCls}">MUTE</span>
+                    <span id="ind-clip-${i}" class="led led-clip">CLIP</span>
+                </div>
+            </div>
+            <div class="pro-meter-container">
+                <div id="mtr-${i}" class="pro-meter-fill"></div>
+                <div class="pro-meter-marks"></div>
+            </div>
+            <div class="pro-meter-scale">
+                <span>-60</span><span>-40</span><span>-20</span><span>-10</span><span>0</span>
+            </div>
+        </div>`;
+      });
+      mHtml += '</div>';
+      document.getElementById('meter-grid').innerHTML = mHtml;
+
+      // Build Control Tabs
       ['A', 'B'].forEach((name, i) => {
         let tab = document.getElementById('t-in' + name);
         let content = createSlider('Gain', 'in', i, 'gn', -12, 12, i==0 ? dspState.vA : dspState.vB, 'dB') +
@@ -328,25 +422,26 @@
 
         let inMuteCls = dspState.in_mute[i] ? 'btn-mute active' : 'btn-mute';
         tab.innerHTML = `<div class="btn-row">
-                         <button id="btn-mute-in-${i}" class="${inMuteCls}" onclick="toggleMute('in', ${i})">MUTE IN ${name}</button>
+                           <button id="btn-mute-in-${i}" class="${inMuteCls}" onclick="toggleMute('in', ${i})">MUTE IN ${name}</button>
                            <button class="btn-revert" style="width:100%" onclick="revertTab('in', ${i})">RESET IN ${name}</button>
                          </div>` + wrapSection(`INPUT ${name} SETTINGS`, `<div class="grid">${content}</div>`, `sec-in-${name}`);
       });
 
       for(let i=0; i<4; i++) {
         let tab = document.getElementById('t-out' + (i+1));
+        
         let routeContent = `<div class="grid">
           ${createSelect('Route', 'rt', i, '', ['OFF', 'IN A', 'IN B', 'MIX'], dspState.rt[i])}
           ${createSelect('Phase', 'ph', i, '', ['NORMAL', 'INVERT'], dspState.ph[i])}
           ${createSlider('Delay', 'dl', i, '', 0, 200, dspState.dl[i], 'ms', '', '0.1')}
         </div>
-        <div style="margin-top:10px; color:#00ffcc; font-size:11px; font-weight:bold; margin-bottom:5px;">ALL-PASS FILTER (PHASE ALIGN)</div>
+        <div style="margin-top:15px; color:#00ffcc; font-size:11px; font-weight:bold; margin-bottom:10px; letter-spacing:0.5px;">ALL-PASS FILTER (PHASE ALIGN)</div>
         <div class="grid">
           ${createSelect('Enable APF', 'apf', i, 'e', ['BYPASS', 'ACTIVE'], dspState.apfe[i])}
           ${createSlider('APF Freq', 'apf', i, 'f', 20, 20000, dspState.apff[i], 'Hz', '', '10')}
           ${createSlider('APF Q', 'apf', i, 'q', 0.1, 10, dspState.apfq[i], '', '', '0.1')}
         </div>`;
-
+        
         let xoContent = `<div class="grid">
           ${createSelect('HPF Slope', 'xo', i, 't', ['OFF', 'BW12', 'BW24', 'BW48', 'LR12', 'LR24', 'LR48'], dspState.xt[i])}
           ${createSelect('LPF Slope', 'xo', i, 'th', ['OFF', 'BW12', 'BW24', 'BW48', 'LR12', 'LR24', 'LR48'], dspState.xth[i])}
@@ -358,14 +453,14 @@
         let eqContent = `<div class="grid">`;
         for(let b=0; b<7; b++) {
           eqContent += `
-            <div style="grid-column: 1 / -1; display:flex; gap:5px; background:#111; padding:5px; margin-bottom:2px; border-radius:4px;">
+            <div style="grid-column: 1 / -1; display:flex; gap:8px; background:#111; padding:8px; margin-bottom:4px; border-radius:4px; border:1px solid #222;">
               <div style="flex:2">${createSlider(`B${b+1}`, 'eq', i, 'f', 20, 20000, dspState.eqf[i][b], 'Hz', b, '10')}</div>
               <div style="flex:1">${createSlider(`G`, 'eq', i, 'g', -12, 12, dspState.eq_gn[i][b], 'dB', b)}</div>
               <div style="flex:1">${createSlider(`Q`, 'eq', i, 'q', 0.1, 10, dspState.eqq[i][b], '', b, '0.1')}</div>
             </div>`;
         }
         eqContent += `</div>`;
-
+        
         let compContent = `<div class="grid">
             ${createSlider('Thresh', 'comp', i, 'thr', -30, 7, dspState.ct[i], 'dB')}
             ${createSlider('Ratio', 'comp', i, 'rat', 1, 21, dspState.cr[i], ':1')}
@@ -387,12 +482,6 @@
         
         drawGraph(i);
       }
-
-      let mHtml = '';
-      ['IN A', 'IN B', 'OUT 1', 'OUT 2', 'OUT 3', 'OUT 4'].forEach((lbl, i) => {
-        mHtml += `<div class="control-group"><label>${lbl}</label><div class="meter-container"><div id="mtr-${i}" class="fill"></div></div></div>`;
-      });
-      document.getElementById('meter-grid').innerHTML = mHtml;
     }
 
     async function revertTab(type, ch) {
@@ -412,19 +501,16 @@
           sendBLE(`/api/set?type=apf&ch=${ch}&p=f&v=1000`);
           sendBLE(`/api/set?type=apf&ch=${ch}&p=q&v=0.7`);
           
-          // Trigger the individual DSP block resets silently (skip confirm prompt)
           revertBlock(ch, 'xo', true);
           revertBlock(ch, 'eq', true);
           revertBlock(ch, 'comp', true);
       }
-
-      // Sync the UI directly from the ESP hardware to prevent unsaved changes from wiping
       sendBLE('/api/dump');
     }
 
     async function revertBlock(ch, block, skipConfirm = false) {
       if(!skipConfirm && !confirm(`Reset this DSP section to default flat values?`)) return;
-
+      
       if (block === 'xo') {
         sendBLE(`/api/set?type=xo&ch=${ch}&p=t&v=0`);
         sendBLE(`/api/set?type=xo&ch=${ch}&p=th&v=0`);
@@ -446,10 +532,7 @@
         sendBLE(`/api/set?type=comp&ch=${ch}&p=rel&v=100`);
       }
 
-      if (!skipConfirm) {
-        // Sync the UI directly from the ESP hardware to prevent unsaved changes from wiping
-        sendBLE('/api/dump');
-      }
+      if (!skipConfirm) sendBLE('/api/dump');
     }
   </script>
 </body>
