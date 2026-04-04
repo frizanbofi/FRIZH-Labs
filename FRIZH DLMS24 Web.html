@@ -5,11 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { background: #121212; color: #ddd; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 10px; }
-    h2 { color: #00ffcc; text-align: center; letter-spacing: 2px; border-bottom: 1px solid #333; padding-bottom: 10px; }
     
+    /* App Header & BLE Icon */
+    .app-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; border-bottom: 1px solid #333; margin-bottom: 15px; }
+    .app-title { color: #00ffcc; font-size: 20px; font-weight: bold; letter-spacing: 2px; }
+    #ble-btn { cursor: pointer; color: #555; transition: all 0.3s ease; padding: 5px; }
+    #ble-btn.connected { color: #00ffcc; filter: drop-shadow(0 0 8px rgba(0,255,204,0.6)); }
+    #ble-btn:hover { color: #fff; }
+
     .tabs { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; scrollbar-width: none; }
     .tabs::-webkit-scrollbar { display: none; }
-    .tab { flex: 1; padding: 10px; background: #222; text-align: center; cursor: pointer; border-radius: 5px; font-weight: bold; min-width: 60px; transition: 0.2s; border: 1px solid transparent; }
+    .tab { flex: 1; padding: 10px; background: #222; text-align: center; cursor: pointer; border-radius: 5px; font-weight: bold; min-width: 60px; transition: 0.2s; border: 1px solid transparent; font-size: 13px; }
     .tab.active { background: #00ffcc; color: #000; box-shadow: 0 0 10px rgba(0,255,204,0.3); }
     
     .panel { display: none; background: #1a1a1a; padding: 15px; border-radius: 5px; border: 1px solid #333; }
@@ -24,24 +30,82 @@
     select:focus { border-color: #00ffcc; }
     .val-display { float: right; color: #00ffcc; font-weight: bold; font-family: monospace; font-size: 12px; }
     
-    /* Pro VU Meter Styles */
-    .pro-meters-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
-    @media (min-width: 600px) { .pro-meters-grid { grid-template-columns: 1fr 1fr; } }
-    .meter-wrapper { background: #181818; padding: 12px; border-radius: 6px; border: 1px solid #333; box-shadow: inset 0 2px 8px rgba(0,0,0,0.6); }
-    .meter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .meter-title { font-weight: 800; color: #00ffcc; font-size: 13px; letter-spacing: 1px; text-shadow: 0 0 5px rgba(0,255,204,0.3); }
-    .meter-indicators { display: flex; gap: 6px; }
+    /* Vertical VU Meter Styles */
+    .pro-meters-grid { 
+      display: flex; 
+      justify-content: center; 
+      gap: 12px; 
+      padding: 10px 0; 
+      height: 320px; 
+      overflow-x: auto; 
+    }
+    .meter-unit {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+    }
+    .meter-wrapper { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: flex-start;
+    }
+    .meter-title { font-weight: 800; color: #fff; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.7; }
     
-    .led { padding: 3px 6px; border-radius: 3px; font-size: 9px; font-weight: 900; letter-spacing: 0.5px; color: #444; background: #222; border: 1px solid #111; opacity: 0.6; transition: all 0.1s; }
+    .pro-meter-container { 
+      width: 30px; 
+      height: 180px; 
+      background: #000; 
+      border-radius: 2px; 
+      position: relative; 
+      overflow: hidden; 
+      border: 1px solid #333; 
+    }
+    .pro-meter-fill { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: linear-gradient(to top, #004400 0%, #00cc00 60%, #e6e600 80%, #ff0000 100%); transition: height 0.08s ease-out; }
+    .pro-meter-marks { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(to top, transparent, transparent 3px, #0a0a0a 3px, #0a0a0a 4px); pointer-events: none; }
+    
+    /* DB Scale */
+    .scale-wrapper { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; height: 100%; padding-right: 5px; }
+    .meter-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 2px;
+    }
+    .db-scale-container { 
+      position: relative; 
+      height: 180px; 
+      width: 24px; 
+    }
+    .db-scale-container span { 
+      position: absolute; 
+      right: 2px; 
+      font-size: 9px; 
+      font-weight: bold; 
+      transform: translateY(-50%); 
+      font-family: monospace; 
+      line-height: 1;
+    }
+    .db-val-12  { top: 0%; color: #ff5555; }
+    .db-val-0   { top: 23.1%; color: #ffcc00; }
+    .db-val-m10 { top: 42.3%; color: #44ff44; }
+    .db-val-m20 { top: 61.5%; color: #aaaaaa; }
+    .db-val-m40 { top: 100%; color: #666666; }
+
+    .meter-wrapper { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+    }
+    
+    .meter-indicators { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; width: 100%; align-items: center; }
+    .scale-indicators-dummy { visibility: hidden; } /* To keep alignment with other wrappers */
+    
+    .led { width: 32px; text-align: center; padding: 3px 0; border-radius: 3px; font-size: 8px; font-weight: 900; letter-spacing: 0.5px; color: #444; background: #222; border: 1px solid #111; opacity: 0.6; transition: all 0.1s; box-sizing: border-box; }
     .led.active { opacity: 1; color: #fff; }
     .led-mute.active { background: #e60000; border-color: #ff3333; box-shadow: 0 0 8px #e60000; }
     .led-clip.active { background: #ff0000; border-color: #ff6666; box-shadow: 0 0 10px #ff0000; color: #fff; }
     .led-comp.active { background: #ffaa00; border-color: #ffcc00; box-shadow: 0 0 8px #ffaa00; color: #000; }
-
-    .pro-meter-container { height: 16px; background: #0a0a0a; border-radius: 3px; position: relative; overflow: hidden; border: 1px solid #000; box-shadow: inset 0 1px 3px rgba(0,0,0,0.8); }
-    .pro-meter-fill { height: 100%; width: 0%; background: linear-gradient(to right, #00cc00 55%, #e6e600 80%, #ff0000 95%); transition: width 0.08s ease-out; }
-    .pro-meter-marks { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(to right, transparent, transparent 3px, #0a0a0a 3px, #0a0a0a 4px); pointer-events: none; }
-    .pro-meter-scale { display: flex; justify-content: space-between; margin-top: 4px; color: #777; font-size: 10px; font-family: monospace; padding: 0 2px; }
+    .led-placeholder { height: 16px; width: 32px; } 
 
     canvas { background: #000; width: 100%; height: 140px; border-radius: 5px; border: 1px solid #444; margin: 15px 0; display: block; box-shadow: inset 0 0 10px rgba(0,255,204,0.1); }
     
@@ -58,25 +122,57 @@
     .dsp-section { background: #1a1a1a; padding: 12px; border: 1px solid #333; border-top: 1px solid #222; border-radius: 0 0 4px 4px; transition: opacity 0.2s; }
     .dsp-section.locked { opacity: 0.4; pointer-events: none; filter: grayscale(50%); }
     
-    /* BLE Overlay */
-    #connect-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(18,18,18,0.95); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; backdrop-filter: blur(5px); }
+    /* BLE Overlays & Dialogs */
+    #connect-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(18,18,18,0.95); z-index:9998; display:flex; justify-content:center; align-items:center; flex-direction:column; backdrop-filter: blur(5px); }
     .btn-connect { padding:15px 30px; font-size:16px; background:#00ffcc; color:#000; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow: 0 4px 15px rgba(0, 255, 204, 0.4); transition: 0.2s; letter-spacing: 1px; }
     .btn-connect:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 255, 204, 0.6); }
     .btn-connect:active { transform: translateY(1px); }
+
+    #ble-dialog-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:none; justify-content:center; align-items:center; backdrop-filter: blur(3px); }
+    .ble-dialog { background:#1a1a1a; padding:25px; border-radius:8px; border:1px solid #333; text-align:center; min-width: 280px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .ble-dialog h3 { color:#00ffcc; margin-top:0; letter-spacing: 1px; font-size: 16px; }
+    .ble-dialog p { color: #aaa; font-size: 13px; margin-bottom: 20px; }
+    .ble-btn-row { display:flex; flex-direction:column; gap:10px; }
+    .ble-dialog button { padding:12px; border:none; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 13px; letter-spacing: 0.5px; transition: 0.2s; }
+    .btn-switch { background:#00ffcc; color:#000; }
+    .btn-switch:hover { background:#00e6b8; }
+    .btn-dc { background:#ff3333; color:#fff; }
+    .btn-dc:hover { background:#e60000; }
+    .btn-cancel { background:#333; color:#fff; border: 1px solid #555 !important; }
+    .btn-cancel:hover { background:#444; }
   </style>
 </head>
 <body>
 
   <div id="connect-overlay">
-    <h2 style="border:none; margin-bottom: 30px; font-size: 28px;">FRIZH DLMS 24</h2>
-    <button class="btn-connect" onclick="connectBLE()">CONNECT BLUETOOTH</button>
+    <div style="font-size: 28px; font-weight: bold; color: #00ffcc; letter-spacing: 2px; margin-bottom: 30px;">FRIZH DLMS 24</div>
+    <button class="btn-connect" onclick="connectBLE()">SCAN & CONNECT</button>
     <p style="color:#888; margin-top:20px; text-align:center; font-size: 13px; line-height: 1.6;">Ensure Bluetooth is enabled on your device.<br>Requires Google Chrome, Edge, or a WebBLE supported browser.</p>
   </div>
 
-  <h2>FRIZH DLMS 24</h2>
+  <div id="ble-dialog-overlay">
+    <div class="ble-dialog">
+      <h3>DEVICE STATUS</h3>
+      <p id="ble-connected-name">Connected to: Unknown</p>
+      <div class="ble-btn-row">
+        <button class="btn-switch" onclick="switchDevice()">SWITCH DEVICE</button>
+        <button class="btn-dc" onclick="disconnectBLE()">DISCONNECT</button>
+        <button class="btn-cancel" onclick="closeBleDialog()">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-header">
+    <div class="app-title">FRIZH DLMS 24</div>
+    <div id="ble-btn" onclick="handleBleIconClick()" title="Bluetooth Options">
+      <svg viewBox="0 0 24 24" width="26" height="26" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"></polyline>
+      </svg>
+    </div>
+  </div>
   
   <div class="tabs" id="tabs">
-    <div class="tab active" onclick="switchTab('t-meters')">VU METERS</div>
+    <div class="tab active" onclick="switchTab('t-meters')">MONITOR</div>
     <div class="tab" onclick="switchTab('t-inA')">IN A</div>
     <div class="tab" onclick="switchTab('t-inB')">IN B</div>
     <div class="tab" onclick="switchTab('t-out1')">OUT 1</div>
@@ -104,13 +200,44 @@
     let isWriting = false;
     let jsonBuffer = "";
 
+    function handleBleIconClick() {
+      if (bleDevice && bleDevice.gatt.connected) {
+         document.getElementById('ble-connected-name').innerText = "Connected to:\n" + (bleDevice.name || "FRIZH_DLMS24_...");
+         document.getElementById('ble-dialog-overlay').style.display = 'flex';
+      } else {
+         connectBLE();
+      }
+    }
+
+    function closeBleDialog() {
+        document.getElementById('ble-dialog-overlay').style.display = 'none';
+    }
+
+    function disconnectBLE() {
+        if (bleDevice && bleDevice.gatt.connected) {
+            bleDevice.gatt.disconnect();
+        }
+        closeBleDialog();
+    }
+
+    async function switchDevice() {
+        disconnectBLE();
+        // Short delay to allow disconnect to settle before opening browser device picker again
+        setTimeout(() => { connectBLE(); }, 400); 
+    }
+
     async function connectBLE() {
       try {
         bleDevice = await navigator.bluetooth.requestDevice({
-          filters: [{ name: 'FRIZH_DLMS_24' }],
+          filters: [{ namePrefix: 'FRIZH_DLMS24_' }], 
           optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e']
         });
-        bleDevice.addEventListener('gattserverdisconnected', () => { location.reload(); });
+        
+        bleDevice.addEventListener('gattserverdisconnected', () => { 
+            document.getElementById('ble-btn').classList.remove('connected');
+            document.getElementById('connect-overlay').style.display = 'flex'; 
+        });
+
         bleServer = await bleDevice.gatt.connect();
         bleService = await bleServer.getPrimaryService('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
         rxChar = await bleService.getCharacteristic('6e400002-b5a3-f393-e0a9-e50e24dcca9e');
@@ -120,11 +247,16 @@
         txChar.addEventListener('characteristicvaluechanged', handleNotifications);
         
         document.getElementById('connect-overlay').style.display = 'none';
-        // Request Initial State Dump
+        document.getElementById('ble-btn').classList.add('connected');
+        closeBleDialog(); // Ensure dialog is closed if connected from switch mode
+
         sendBLE('/api/dump');
+
       } catch(e) { 
         console.error("BLE Error:", e);
-        alert("Bluetooth Connection Failed. Please ensure your device supports Web Bluetooth."); 
+        if (e.name !== 'NotFoundError') {
+            alert("Bluetooth Connection Failed. Please ensure your device supports Web Bluetooth.");
+        }
       }
     }
 
@@ -137,7 +269,7 @@
         await rxChar.writeValueWithoutResponse(enc.encode(cmd));
       } catch(e) { console.log("BLE Write Error", e); }
       isWriting = false;
-      setTimeout(processBleQueue, 15); // Slight delay for BLE Stack
+      setTimeout(processBleQueue, 15); 
     }
 
     function sendBLE(cmd) {
@@ -149,46 +281,38 @@
       let val = new TextDecoder().decode(event.target.value);
       
       if(val.startsWith("S:")) {
-        // Status Update Data: 
-        // [0-5]: Meter peaks | [6-7]: In Mutes | [8-11]: Out Mutes | [12-15]: Comp Actives
         let p = val.substring(2).split(',');
-        
+
         if(document.getElementById('t-meters').classList.contains('active')) {
           for(let i=0; i<6; i++) {
             let floatPeak = parseFloat(p[i]) || 1e-9;
-            let db = 20 * Math.log10(floatPeak);
+            let db = 20 * Math.log10(floatPeak) + 10;
             
-            // Update VU Bar width
+            // Replicating Flutter DBScale logic: -40dB to +12dB (Range of 52dB)
+            let pct = Math.max(0, Math.min(100, (db + 40) * (100 / 52)));
+            
             let mtr = document.getElementById(`mtr-${i}`);
-            if(mtr) mtr.style.width = Math.max(0, Math.min(100, (db + 60) * (100 / 60))) + '%';
+            if(mtr) mtr.style.height = pct + '%';
             
-            // Clip Indicator (Triggers if peak is very close to 0dBFS)
             let clipLed = document.getElementById(`ind-clip-${i}`);
             if(clipLed) clipLed.classList.toggle('active', floatPeak >= 0.99);
           }
         }
         
-        // Update Mutes and Comps states across UI
         if (dspState.in_mute !== undefined) {
           for(let i=0; i<2; i++) {
             dspState.in_mute[i] = (p[6+i] === '1');
-            
-            // Update Mute button inside specific IN tab
             let btn = document.getElementById(`btn-mute-in-${i}`);
             if(btn) btn.classList.toggle('active', dspState.in_mute[i]);
             
-            // Update LED in VU Tab
             let muteLed = document.getElementById(`ind-mute-${i}`);
             if(muteLed) muteLed.classList.toggle('active', dspState.in_mute[i]);
           }
           for(let i=0; i<4; i++) {
             dspState.out_mute[i] = (p[8+i] === '1');
-            
-            // Update Mute button inside specific OUT tab
             let btn = document.getElementById(`btn-mute-out-${i}`);
             if(btn) btn.classList.toggle('active', dspState.out_mute[i]);
             
-            // Update LEDs in VU Tab
             let muteLed = document.getElementById(`ind-mute-${i+2}`);
             if(muteLed) muteLed.classList.toggle('active', dspState.out_mute[i]);
             
@@ -197,7 +321,6 @@
           }
         }
       } else if (val.startsWith("J:")) {
-        // JSON Chunk
         jsonBuffer += val.substring(2);
         if(jsonBuffer.endsWith("}")) {
           try {
@@ -288,7 +411,6 @@
       if (type === 'comp' && param === 'rat' && parseInt(val) === 21) displayVal = "LIM";
       
       let htmlVal = val, htmlMin = min, htmlMax = max, htmlStep = step;
-      
       if (isFreq) {
          htmlMin = 0;
          htmlMax = 1000; htmlStep = 1;
@@ -383,37 +505,49 @@
       <div id="${id}" class="dsp-section locked">${content}</div>`;
 
     function buildUI() {
-      // Build VU Meters grid
+      // Build Vertical VU Meters grid
       let mHtml = '<div class="pro-meters-grid">';
-      ['IN A', 'IN B', 'OUT 1', 'OUT 2', 'OUT 3', 'OUT 4'].forEach((lbl, i) => {
+      
+      const labels = ['IN A', 'IN B', 'OUT 1', 'OUT 2', 'OUT 3', 'OUT 4'];
+      
+      labels.forEach((lbl, i) => {
         let isOut = i >= 2;
         let muteCls = (isOut ? dspState.out_mute[i-2] : dspState.in_mute[i]) ? 'led-mute active' : 'led-mute';
         
         mHtml += `
         <div class="meter-wrapper">
-            <div class="meter-header">
-                <span class="meter-title">${lbl}</span>
-                <div class="meter-indicators">
-                    ${isOut ? `<span id="ind-comp-${i}" class="led led-comp">COMP</span>` : ''}
-                    <span id="ind-mute-${i}" class="led ${muteCls}">MUTE</span>
-                    <span id="ind-clip-${i}" class="led led-clip">CLIP</span>
+            <span class="meter-title">${lbl}</span>
+            
+            <div class="meter-row">
+                <div class="db-scale-container">
+                    <span class="db-val-12">+12</span>
+                    <span class="db-val-0">0</span>
+                    <span class="db-val-m10">-10</span>
+                    <span class="db-val-m20">-20</span>
+                    <span class="db-val-m40">-40</span>
+                </div>
+                
+                <div class="pro-meter-container">
+                    <div id="mtr-${i}" class="pro-meter-fill"></div>
+                    <div class="pro-meter-marks"></div>
                 </div>
             </div>
-            <div class="pro-meter-container">
-                <div id="mtr-${i}" class="pro-meter-fill"></div>
-                <div class="pro-meter-marks"></div>
-            </div>
-            <div class="pro-meter-scale">
-                <span>-60</span><span>-40</span><span>-20</span><span>-10</span><span>0</span>
+
+            <div class="meter-indicators">
+                ${isOut ? `<span id="ind-comp-${i}" class="led led-comp">COMP</span>` : '<span class="led-placeholder"></span>'}
+                <span id="ind-mute-${i}" class="led ${muteCls}">MUTE</span>
+                <span id="ind-clip-${i}" class="led led-clip">CLIP</span>
             </div>
         </div>`;
       });
+      
       mHtml += '</div>';
       document.getElementById('meter-grid').innerHTML = mHtml;
 
-      // Build Control Tabs
+      // ... (Rest of the buildUI function for Inputs/Outputs remains the same)
       ['A', 'B'].forEach((name, i) => {
         let tab = document.getElementById('t-in' + name);
+        if(!tab) return;
         let content = createSlider('Gain', 'in', i, 'gn', -12, 12, i==0 ? dspState.vA : dspState.vB, 'dB') +
                       createSlider('Gate Thresh', 'gate', i, 'thr', -60, 0, dspState.gth[i], 'dB') +
                       createSlider('Attack', 'gate', i, 'atk', 1, 100, dspState.gat[i], 'ms') +
@@ -429,7 +563,7 @@
 
       for(let i=0; i<4; i++) {
         let tab = document.getElementById('t-out' + (i+1));
-        
+        if(!tab) continue;
         let routeContent = `<div class="grid">
           ${createSelect('Route', 'rt', i, '', ['OFF', 'IN A', 'IN B', 'MIX'], dspState.rt[i])}
           ${createSelect('Phase', 'ph', i, '', ['NORMAL', 'INVERT'], dspState.ph[i])}
@@ -441,7 +575,7 @@
           ${createSlider('APF Freq', 'apf', i, 'f', 20, 20000, dspState.apff[i], 'Hz', '', '10')}
           ${createSlider('APF Q', 'apf', i, 'q', 0.1, 10, dspState.apfq[i], '', '', '0.1')}
         </div>`;
-        
+
         let xoContent = `<div class="grid">
           ${createSelect('HPF Slope', 'xo', i, 't', ['OFF', 'BW12', 'BW24', 'BW48', 'LR12', 'LR24', 'LR48'], dspState.xt[i])}
           ${createSelect('LPF Slope', 'xo', i, 'th', ['OFF', 'BW12', 'BW24', 'BW48', 'LR12', 'LR24', 'LR48'], dspState.xth[i])}
@@ -473,7 +607,7 @@
         tab.innerHTML = `<div class="btn-row">
                            <button id="btn-mute-out-${i}" class="${outMuteCls}" onclick="toggleMute('out', ${i})">MUTE OUT ${i+1}</button>
                            <button class="btn-revert" style="width:100%" onclick="revertTab('out', ${i})">RESET ALL OUT ${i+1}</button>
-                          </div>` +
+                         </div>` +
                         wrapSection("ROUTING & PHASE", routeContent, `sec-rt-${i}`) +
                         wrapSection("BAND-PASS CROSSOVER", xoContent, `sec-xo-${i}`, `revertBlock(${i}, 'xo')`) +
                         `<canvas id="cvs-${i}" width="400" height="140"></canvas>` +
@@ -486,7 +620,6 @@
 
     async function revertTab(type, ch) {
       if(!confirm(`Reset entire ${type.toUpperCase()} Channel ${type === 'in' ? (ch === 0 ? 'A' : 'B') : ch + 1} to default flat values?`)) return;
-      
       if (type === 'in') {
           sendBLE(`/api/set?type=in&ch=${ch}&v=0`);
           sendBLE(`/api/set?type=gate&ch=${ch}&p=thr&v=-60`);
@@ -510,7 +643,6 @@
 
     async function revertBlock(ch, block, skipConfirm = false) {
       if(!skipConfirm && !confirm(`Reset this DSP section to default flat values?`)) return;
-      
       if (block === 'xo') {
         sendBLE(`/api/set?type=xo&ch=${ch}&p=t&v=0`);
         sendBLE(`/api/set?type=xo&ch=${ch}&p=th&v=0`);
