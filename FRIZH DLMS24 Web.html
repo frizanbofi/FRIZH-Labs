@@ -102,6 +102,18 @@
     .btn-dc:hover { background:#e60000; }
     .btn-cancel { background:#333; color:#fff; border: 1px solid #555 !important; }
     .btn-cancel:hover { background:#444; }
+    /* Fine-tune Button Styles */
+    .slider-controls { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+    .fine-btn { 
+      background: #333; color: #00ffcc; border: 1px solid #444; 
+      width: 30px; height: 30px; border-radius: 4px; cursor: pointer; 
+      font-weight: bold; font-size: 16px; display: flex; 
+      align-items: center; justify-content: center; transition: 0.2s;
+      user-select: none;
+    }
+    .fine-btn:hover { background: #444; border-color: #00ffcc; }
+    .fine-btn:active { background: #00ffcc; color: #000; }
+    input[type=range] { flex: 1; } /* Ensure slider takes remaining space */
   </style>
 </head>
 <body>
@@ -163,6 +175,22 @@
     let bleQueue = [];
     let isWriting = false;
     let jsonBuffer = "";
+
+    function fineTune(id, delta) {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      let newVal = parseFloat(el.value) + (delta * parseFloat(el.step || 1));
+      
+      // Constrain to min/max
+      if (newVal < parseFloat(el.min)) newVal = parseFloat(el.min);
+      if (newVal > parseFloat(el.max)) newVal = parseFloat(el.max);
+      
+      el.value = newVal;
+      
+      // Trigger the update logic
+      handleSliderInput(el);
+    }
 
     function handleBleIconClick() {
       if (bleDevice && bleDevice.gatt.connected) {
@@ -449,11 +477,14 @@
     function createSlider(label, type, ch, param, min, max, val, unit, band = '', step = '1') {
       let id = `${type}_${param}_${ch}${band !== '' ? '_' + band : ''}`;
       let isFreq = (param === 'f' || param === 'fl' || param === 'fh');
+      let isDelay = (type === 'dl' || type === 'idl');
       let displayVal = parseFloat(val).toFixed((unit === '' || step === '0.1') ? 1 : 0) + unit;
-      
-      if(type === 'dl' || type === 'idl') {
-          let dist = (parseFloat(val) * 34.3).toFixed(1);
-          displayVal = parseFloat(val).toFixed(1) + 'ms / ' + dist + 'cm';
+
+      let showButtons = isFreq || isDelay;
+
+      let displayVal = parseFloat(val).toFixed((unit === '' || step === '0.1') ? 1 : 0) + unit;
+      if(isDelay) {
+          displayVal = parseFloat(val).toFixed(1) + 'ms / ' + (parseFloat(val) * 34.3).toFixed(1) + 'cm';
       }
       
       if (type === 'comp' && param === 'thr' && parseInt(val) === 7) displayVal = "OFF";
@@ -468,8 +499,13 @@
       return `
         <div class="control-group">
           <label>${label} <span class="val-display">${displayVal}</span></label>
-          <input type="range" id="${id}" data-type="${type}" data-ch="${ch}" data-p="${param}" data-b="${band}" data-min="${min}" data-max="${max}" data-unit="${unit}" min="${htmlMin}" max="${htmlMax}" step="${htmlStep}" value="${htmlVal}" 
-            oninput="handleSliderInput(this)">
+          <div class="slider-controls">
+            ${showButtons ? `<button class="fine-btn" onclick="fineTune('${id}', -1)">-</button>` : ''}
+            <input type="range" id="${id}" data-type="${type}" data-ch="${ch}" data-p="${param}" data-b="${band}" 
+              data-min="${min}" data-max="${max}" data-unit="${unit}" min="${htmlMin}" max="${htmlMax}" 
+              step="${htmlStep}" value="${htmlVal}" oninput="handleSliderInput(this)">
+            ${showButtons ? `<button class="fine-btn" onclick="fineTune('${id}', 1)">+</button>` : ''}
+          </div>
         </div>`;
     }
 
