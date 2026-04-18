@@ -56,11 +56,11 @@
     .meter-row { display: flex; align-items: flex-start; gap: 2px; }
     .db-scale-container { position: relative; height: 180px; width: 24px; }
     .db-scale-container span { position: absolute; right: 2px; font-size: 9px; font-weight: bold; transform: translateY(-50%); font-family: monospace; line-height: 1; }
-    .db-val-12  { top: 0%; color: #ff5555; }
-    .db-val-0   { top: 23.1%; color: #ffcc00; }
-    .db-val-m10 { top: 42.3%; color: #44ff44; }
-    .db-val-m20 { top: 61.5%; color: #aaaaaa; }
-    .db-val-m40 { top: 100%; color: #666666; }
+    .db-val-0   { top: 0%; color: #ff5555; }
+    .db-val-m10 { top: 16.6%; color: #ffcc00; }
+    .db-val-m20 { top: 33.3%; color: #44ff44; }
+    .db-val-m40 { top: 66.6%; color: #aaaaaa; }
+    .db-val-m60 { top: 100%; color: #666666; }
 
     .meter-indicators { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; width: 100%; align-items: center; }
     .scale-indicators-dummy { visibility: hidden; } 
@@ -252,13 +252,14 @@
         if(document.getElementById('t-meters').classList.contains('active')) {
           for(let i=0; i<6; i++) {
             let floatPeak = parseFloat(p[i]) || 1e-9;
-            let db = 20 * Math.log10(floatPeak) + 10;
-            let pct = Math.max(0, Math.min(100, (db + 40) * (100 / 52)));
+            let db = 20 * Math.log10(floatPeak); // Standard true 0dBFS scaling
+            let pct = Math.max(0, Math.min(100, (db + 60) * (100 / 60))); // Map -60dB to 0dB
+            
             let mtr = document.getElementById(`mtr-${i}`);
             if(mtr) mtr.style.height = pct + '%';
             
             let clipLed = document.getElementById(`ind-clip-${i}`);
-            if(clipLed) clipLed.classList.toggle('active', floatPeak >= 0.99);
+            if(clipLed) clipLed.classList.toggle('active', db >= -2); // Clip threshold at -2dB
           }
         }
         
@@ -667,11 +668,11 @@
             <span class="meter-title">${lbl}</span>
             <div class="meter-row">
                 <div class="db-scale-container">
-                    <span class="db-val-12">+12</span>
                     <span class="db-val-0">0</span>
                     <span class="db-val-m10">-10</span>
                     <span class="db-val-m20">-20</span>
                     <span class="db-val-m40">-40</span>
+                    <span class="db-val-m60">-60</span>
                 </div>
                 <div class="pro-meter-container">
                     <div id="mtr-${i}" class="pro-meter-fill"></div>
@@ -693,17 +694,29 @@
       ['A', 'B'].forEach((name, i) => {
         let tab = document.getElementById('t-in' + name);
         if(!tab) return;
-        let content = createSlider('Gain', 'in', i, 'gn', -12, 12, i==0 ? dspState.vA : dspState.vB, 'dB') +
-                      createSlider('Gate Thresh', 'gate', i, 'thr', -60, 0, dspState.gth[i], 'dB') +
-                      createSlider('Attack', 'gate', i, 'atk', 1, 100, dspState.gat[i], 'ms') +
-                      createSlider('Release', 'gate', i, 'rel', 10, 1000, dspState.gre[i], 'ms') +
-                      createSlider('Delay', 'idl', i, '', 0, 200, dspState.idl[i], 'ms', '', '0.1');
+        
+        // Safety fallback for delay state to prevent NaN errors
+        let idlSafe = (dspState.idl && dspState.idl[i] !== undefined) ? dspState.idl[i] : 0;
+        let gainVal = i === 0 ? dspState.vA : dspState.vB;
+
+        let gainContent = createSlider('Gain', 'in', i, 'gn', -12, 24, gainVal, 'dB');
+        
+        let gateContent = createSlider('Gate Thresh', 'gate', i, 'thr', -90, 0, dspState.gth[i], 'dB') +
+                          createSlider('Attack', 'gate', i, 'atk', 1, 100, dspState.gat[i], 'ms') +
+                          createSlider('Release', 'gate', i, 'rel', 10, 1000, dspState.gre[i], 'ms');
+                          
+        let delayContent = createSlider('Delay', 'idl', i, '', 0, 200, idlSafe, 'ms', '', '0.1');
 
         let inMuteCls = dspState.in_mute[i] ? 'btn-mute active' : 'btn-mute';
+        
+        // Use flex column instead of grid for maximum slider space
         tab.innerHTML = `<div class="btn-row">
                            <button id="btn-mute-in-${i}" class="${inMuteCls}" onclick="toggleMute('in', ${i})">MUTE IN ${name}</button>
                            <button class="btn-revert" style="width:100%" onclick="revertTab('in', ${i})">RESET IN ${name}</button>
-                         </div>` + wrapSection(`INPUT ${name} SETTINGS`, `<div class="grid">${content}</div>`, `sec-in-${name}`);
+                         </div>` + 
+                         wrapSection(`GAIN`, `<div style="display:flex; flex-direction:column; gap:8px;">${gainContent}</div>`, `sec-in-gain-${name}`) +
+                         wrapSection(`NOISE GATE`, `<div style="display:flex; flex-direction:column; gap:8px;">${gateContent}</div>`, `sec-in-gate-${name}`) +
+                         wrapSection(`DELAY`, `<div style="display:flex; flex-direction:column; gap:8px;">${delayContent}</div>`, `sec-in-dly-${name}`);
       });
 
       // Outputs
@@ -855,7 +868,7 @@
       if(!confirm(`Reset entire ${type.toUpperCase()} Channel ${type === 'in' ? (ch === 0 ? 'A' : 'B') : ch + 1} to default flat values?`)) return;
       if (type === 'in') {
           sendBLE(`/api/set?type=in&ch=${ch}&v=0`);
-          sendBLE(`/api/set?type=gate&ch=${ch}&p=thr&v=-60`);
+          sendBLE(`/api/set?type=gate&ch=${ch}&p=thr&v=-75`);
           sendBLE(`/api/set?type=gate&ch=${ch}&p=atk&v=10`);
           sendBLE(`/api/set?type=gate&ch=${ch}&p=rel&v=200`);
           sendBLE(`/api/set?type=idl&ch=${ch}&v=0`);
